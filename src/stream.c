@@ -355,7 +355,7 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
                     else
                     {
                         //fu_indicator is 1 bytes
-                        packet[RTP_HEADER_SIZE] = = (nal_data[0] & 0xE0) | 28;                                 // fu_indicator[0],FU-A type=28
+                        packet[RTP_HEADER_SIZE] = (nal_data[0] & 0xE0) | 28;                                 // fu_indicator[0],FU-A type=28
                         packet[RTP_HEADER_SIZE + 1] = (is_first ? 0x80 : 0) | (is_last ? 0x40 : 0) | nal_type; // fu_header
                     }
 
