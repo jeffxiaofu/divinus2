@@ -1,9 +1,6 @@
-![OpenIPC logo][logo]
 
-## Divinus
+## Divinus-DigitalFPV
 **_Divinus is a new open source, multi-platform streamer_**
-
-[![Telegram](https://openipc.org/images/telegram_button.svg)][telegram]
 
 ### Inner workings
 
