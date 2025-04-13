@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": true,
+      "cwd": "y:/pyz/divinus/src",
+      "program": "y:/pyz/divinus/src/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "toolchain/toolchain.hisilicon-hi3516cv500/bin/arm-openipc-linux-gnueabi-gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}
