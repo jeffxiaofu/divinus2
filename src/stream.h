@@ -19,7 +19,8 @@
 #define RTP_HEADER_SIZE 12
 #define UDP_MAX_CLIENTS 8
 
-typedef struct {
+typedef struct
+{
     struct sockaddr_in addr;
     int active;
     unsigned int ssrc;
@@ -28,7 +29,8 @@ typedef struct {
     time_t last_act;
 } udp_client_t;
 
-struct udp_stream_ctx {
+struct udp_stream_ctx
+{
     int socket_fd;
     unsigned short port;
     volatile int running;
@@ -44,4 +46,4 @@ int udp_stream_init(unsigned short port, const char *mcast_addr);
 void udp_stream_close(void);
 int udp_stream_add_client(const char *host, unsigned short port);
 void udp_stream_remove_client(int client_id);
-int udp_stream_send_nal(const char *nal_data, int nal_size, int is_keyframe, int is_h265);
+int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext, unsigned int timestamp, int is_keyframe, int is_h265);

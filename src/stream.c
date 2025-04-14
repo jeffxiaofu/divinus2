@@ -1,5 +1,4 @@
 #include "stream.h"
-
 static struct udp_stream_ctx *g_udp_ctx = NULL;
 
 static unsigned long long get_timestamp_us();
@@ -225,11 +224,12 @@ void udp_stream_remove_client(int client_id)
  * Send a RTP-encapsulated NAL unit to all clients
  * @param nal_data NAL unit data
  * @param nal_size Size of the NAL unit
+ * @param timestamp Timestamp of the NAL unit
  * @param is_keyframe Indicates if the NAL unit is a keyframe
  * @param is_h265 Indicates if the NAL unit is using the H.265 codec
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
+int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext, unsigned int timestamp,
                         int is_keyframe, int is_h265)
 {
     char *nal_data = nal_data_ext;
@@ -249,6 +249,18 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
         nal_data = &nal_data[3];
         nal_size -= 3;
     }
+
+    unsigned char nal_type;
+
+    if (is_h265)
+    {
+        nal_type = (nal_data[0] >> 1) & 0x3F;
+    }
+    else
+    {
+        nal_type = nal_data[0] & 0x1F;
+    }
+    int is_VPS_SPS_PPS_SEI = (nal_type == 32 || nal_type == 33 || nal_type == 34 || nal_type == 39) ? 1 : 0;
 
     static unsigned char packet[MAX_UDP_PACKET_SIZE];
     int payload_type = 96;
@@ -274,8 +286,7 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
             mcast_addr.sin_addr.s_addr = g_udp_ctx->mcast_addr;
             mcast_addr.sin_port = htons(g_udp_ctx->port);
 
-            int packet_size = add_rtp_header(packet, nal_size, 0, 0, 0,
-                                             is_keyframe, payload_type);
+            int packet_size = add_rtp_header(packet, nal_size, 0, timestamp, 0, !is_VPS_SPS_PPS_SEI, payload_type);
 
             memcpy(packet + RTP_HEADER_SIZE, nal_data, nal_size);
             packet_size += nal_size;
@@ -291,9 +302,7 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
                 if (!g_udp_ctx->clients[i].active)
                     continue;
 
-                int packet_size = add_rtp_header(packet, nal_size,
-                                                 g_udp_ctx->clients[i].seq++, g_udp_ctx->clients[i].tstamp,
-                                                 g_udp_ctx->clients[i].ssrc, is_keyframe, payload_type);
+                int packet_size = add_rtp_header(packet, nal_size, g_udp_ctx->clients[i].seq++, timestamp, g_udp_ctx->clients[i].ssrc, !is_VPS_SPS_PPS_SEI, payload_type);
 
                 memcpy(packet + RTP_HEADER_SIZE, nal_data, nal_size);
                 packet_size += nal_size;
@@ -310,16 +319,6 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
     {
         // HAL_INFO("stream", "more packet\n");
         int nal_header_size = is_h265 ? 2 : 1;
-        unsigned char nal_type;
-
-        if (is_h265)
-        {
-            nal_type = (nal_data[0] >> 1) & 0x3F;
-        }
-        else
-        {
-            nal_type = nal_data[0] & 0x1F;
-        }
 
         int fragments = (nal_size - nal_header_size) / (MAX_UDP_PACKET_SIZE - nal_header_size - RTP_HEADER_SIZE - 1) + 1;
         int bytes_left = nal_size - nal_header_size;
@@ -335,31 +334,38 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
                 const unsigned char *frag_ptr = data_ptr;
                 unsigned short seq = g_udp_ctx->is_mcast ? 0 : g_udp_ctx->clients[i].seq;
                 unsigned int ssrc = g_udp_ctx->is_mcast ? 0 : g_udp_ctx->clients[i].ssrc;
-                unsigned int tstamp = g_udp_ctx->is_mcast ? 0 : g_udp_ctx->clients[i].tstamp;
 
+                // unsigned long long timestamp = 0;
                 for (int frag = 0; frag < fragments; frag++)
                 {
                     int is_first = (frag == 0);
                     int is_last = (frag == fragments - 1);
+
+                    // if (is_first)
+                    // {
+                    //     timestamp= get_timestamp_us();
+                    // }
+
                     // HAL_INFO("stream", "is_last:%d\n",is_last);
                     int payload_size = (is_last) ? remaining : (MAX_UDP_PACKET_SIZE - nal_header_size - RTP_HEADER_SIZE - 1);
                     // HAL_INFO("stream", "payload_size:%d\n", payload_size);
                     int packet_size = 0;
+                    //HAL_INFO("stream", "is_h265:%d\n", is_h265);
                     if (is_h265)
                     {
-                        //fu_indicator is 2 bytes
-                        packet[RTP_HEADER_SIZE] = (nal_data[0] & 0x81) | (49 << 1);                            // fu_indicator[0],FU type=49
+                        // fu_indicator is 2 bytes
+                        packet[RTP_HEADER_SIZE] = 49 << 1;                                                     // fu_indicator[0],FU type=49
                         packet[RTP_HEADER_SIZE + 1] = nal_data[1];                                             // fu_indicator[1],h265 need nal_data[1]
                         packet[RTP_HEADER_SIZE + 2] = (is_first ? 0x80 : 0) | (is_last ? 0x40 : 0) | nal_type; // fu_header
                     }
                     else
                     {
-                        //fu_indicator is 1 bytes
-                        packet[RTP_HEADER_SIZE] = (nal_data[0] & 0xE0) | 28;                                 // fu_indicator[0],FU-A type=28
+                        // fu_indicator is 1 bytes
+                        packet[RTP_HEADER_SIZE] = (nal_data[0] & 0xE0) | 28;                                   // fu_indicator[0],FU-A type=28
                         packet[RTP_HEADER_SIZE + 1] = (is_first ? 0x80 : 0) | (is_last ? 0x40 : 0) | nal_type; // fu_header
                     }
 
-                    packet_size = add_rtp_header(packet, payload_size + nal_header_size + 1, seq++, tstamp, ssrc, is_keyframe && is_last, payload_type);
+                    packet_size = add_rtp_header(packet, payload_size + nal_header_size + 1, seq++, timestamp, ssrc, is_last, payload_type);
                     packet_size += payload_size + nal_header_size + 1;
                     memcpy(packet + RTP_HEADER_SIZE + nal_header_size + 1, frag_ptr, payload_size);
 
@@ -387,6 +393,11 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
                                sizeof(struct sockaddr_in));
                     }
 
+                    // if (is_last)
+                    // {
+                    //     timestamp= get_timestamp_us()-timestamp;
+                    //     HAL_INFO("stream", "more packet send time %d\n",timestamp);
+                    // }
                     // usleep(100);
                 }
 
@@ -408,7 +419,7 @@ int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext,
     {
         if (!g_udp_ctx->clients[i].active)
             continue;
-        g_udp_ctx->clients[i].tstamp += 3000;
+        g_udp_ctx->clients[i].tstamp = timestamp;
     }
     pthread_mutex_unlock(&g_udp_ctx->mutex);
 

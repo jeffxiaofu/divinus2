@@ -83,15 +83,15 @@ int save_video_stream(char index, hal_vidstream *stream) {
         case HAL_VIDCODEC_H264:
         case HAL_VIDCODEC_H265:
         {
-            char isH265 = chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0;
+            char isH265 = (chnState[index].payload == HAL_VIDCODEC_H265) ? 1 : 0;
 
-            if (app_config.mp4_enable) {
-                pthread_mutex_lock(&mp4Mtx);
-                send_mp4_to_client(index, stream, isH265);
-                pthread_mutex_unlock(&mp4Mtx);
+            // if (app_config.mp4_enable) {
+            //     pthread_mutex_lock(&mp4Mtx);
+            //     send_mp4_to_client(index, stream, isH265);
+            //     pthread_mutex_unlock(&mp4Mtx);
                 
-                send_h26x_to_client(index, stream);
-            }
+            //     send_h26x_to_client(index, stream);
+            // }
             if (app_config.rtsp_enable)
                 for (int i = 0; i < stream->count; i++)
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
@@ -105,7 +105,7 @@ int save_video_stream(char index, hal_vidstream *stream) {
                     {
                         //HAL_DANGER("media", "stream:%d,nalu:%d\n",i,j);
                         udp_stream_send_nal(stream->pack[i].data + stream->pack[i].nalu[j].offset, 
-                            stream->pack[i].nalu[j].length, 
+                            stream->pack[i].nalu[j].length, stream->pack[i].timestamp,
                             stream->pack[i].nalu[j].type == NalUnitType_CodedSliceIdr, isH265);
                     }
                 }
