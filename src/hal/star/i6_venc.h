@@ -3,7 +3,7 @@
 #include "i6_common.h"
 
 #define I6_VENC_CHN_NUM 9
-
+#define RC_TEXTURE_THR_SIZE 1
 typedef enum
 {
     I6_VENC_CODEC_H264 = 2,
@@ -195,6 +195,96 @@ typedef struct
 
 typedef struct
 {
+    int s32IPQPDelta;
+    int s32ChangePos;
+    unsigned int u32MaxIQp;
+    unsigned int u32MinIQp;
+    unsigned int u32MaxIPProp;
+} i6_venc_ParamH264Vbr_t;
+
+typedef struct
+{
+    unsigned int u32MaxQp;
+    unsigned int u32MinQp;
+    int s32IPQPDelta;
+    unsigned int u32MaxIQp;
+    unsigned int u32MinIQp;
+    unsigned int u32MaxIPProp;
+} i6_venc_ParamH264Cbr_t;
+
+typedef struct
+{
+    int s32IPQPDelta;
+    int s32ChangePos;
+    unsigned int u32MinIQp;
+    unsigned int u32MaxIPProp;
+    unsigned int u32MaxIQp;
+    unsigned int u32MaxISize;
+    unsigned int u32MaxPSize;
+    unsigned int u32MinStillPercent;
+    unsigned int u32MaxStillQp;
+    unsigned int u32MotionSensitivity;
+} i6_venc_ParamH264Avbr_t;
+
+typedef struct
+{
+    unsigned int u32MaxQfactor;
+    unsigned int u32MinQfactor;
+} i6_venc_ParamMjpegCbr_t;
+
+typedef struct
+{
+    int s32IPQPDelta;
+    int s32ChangePos;
+    unsigned int u32MaxIQp;
+    unsigned int u32MinIQp;
+    unsigned int u32MaxIPProp;
+} i6_venc_ParamH265Vbr_t;
+
+typedef struct
+{
+    unsigned int u32MaxQp;
+    unsigned int u32MinQp;
+    int s32IPQPDelta;
+    unsigned int u32MaxIQp;
+    unsigned int u32MinIQp;
+    unsigned int u32MaxIPProp;
+} i6_venc_ParamH265Cbr_t;
+
+typedef struct
+{
+    int s32IPQPDelta;
+    int s32ChangePos;
+    unsigned int u32MinIQp;
+    unsigned int u32MaxIPProp;
+    unsigned int u32MaxIQp;
+    unsigned int u32MaxISize;
+    unsigned int u32MaxPSize;
+    unsigned int u32MinStillPercent;
+    unsigned int u32MaxStillQp;
+    unsigned int u32MotionSensitivity;
+} i6_venc_ParamH265Avbr_t;
+
+typedef struct
+{
+    unsigned int au32ThrdI[RC_TEXTURE_THR_SIZE];
+    unsigned int au32ThrdP[RC_TEXTURE_THR_SIZE];
+    unsigned int u32RowQpDelta;
+    union
+    {
+        i6_venc_ParamH264Cbr_t stParamH264Cbr;
+        i6_venc_ParamH264Vbr_t stParamH264VBR;
+        i6_venc_ParamH264Avbr_t stParamH264Avbr;
+        i6_venc_ParamMjpegCbr_t stParamMjpegCbr;
+        i6_venc_ParamH265Cbr_t stParamH265Cbr;
+        i6_venc_ParamH265Vbr_t stParamH265Vbr;
+        i6_venc_ParamH265Avbr_t stParamH265Avbr;
+    };
+    void *pRcParam;
+} i6_venc_RcParam_t;
+
+typedef struct
+{
     i6_venc_attrib attrib;
     i6_venc_rate rate;
 } i6_venc_chn;
@@ -322,6 +412,9 @@ typedef struct
     int (*fnResetChannel)(int channel);
     int (*fnSetChannelConfig)(int channel, i6_venc_chn *config);
 
+    int (*fnSetRcParam)(int channel, i6_venc_RcParam_t *pstRcParam);
+    int (*fnGetRcParam)(int channel, i6_venc_RcParam_t *pstRcParam);
+
     int (*fnFreeDescriptor)(int channel);
     int (*fnGetDescriptor)(int channel);
 
@@ -371,6 +464,14 @@ static int i6_venc_load(i6_venc_impl *venc_lib)
 
     if (!(venc_lib->fnSetChannelConfig = (int (*)(int channel, i6_venc_chn *config))
               hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetChnAttr")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnSetRcParam = (int (*)(int channel, i6_venc_RcParam_t *RcParam))
+              hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetRcParam")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnGetRcParam = (int (*)(int channel, i6_venc_RcParam_t *RcParam))
+              hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetRcParam")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnFreeDescriptor = (int (*)(int channel))

@@ -261,7 +261,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
             _i6_snr_framerate = framerate;
             if (ret = i6_snr.fnSetFramerate(_i6_snr_index, _i6_snr_framerate))
                 return ret;
-            HAL_INFO("i6_hal", "index:%d %dx%d %d-%dHz\n",i,resolution.crop.width,resolution.crop.height,resolution.minFps,resolution.maxFps);
+            HAL_INFO("i6_hal", "index:%d %dx%d %d-%dHz\n", i, resolution.crop.width, resolution.crop.height, resolution.minFps, resolution.maxFps);
             break;
         }
         if (_i6_snr_profile < 0)
@@ -675,7 +675,78 @@ int i6_video_create(char index, hal_vidconfig *config)
     attrib->refNum = 1;
 attach:
     if (ret = i6_venc.fnCreateChannel(index, &channel))
+    {
+        HAL_ERROR("i6_venc", "CreateChannel error:%x\n", ret);
         return ret;
+    }
+
+    //码率控制高级参数
+    i6_venc_RcParam_t RcParam;
+    if (ret = i6_venc.fnGetRcParam(index, &RcParam))
+    {
+        HAL_ERROR("i6_venc", "SetIntraRefresh error:%x\n", ret);
+        return ret;
+    }
+    if (config->codec == HAL_VIDCODEC_H264)
+    {
+        switch (config->mode)
+        {
+        case HAL_VIDMODE_CBR:
+            break;
+        case HAL_VIDMODE_VBR:
+            break;
+        case HAL_VIDMODE_QP:
+            break;
+        case HAL_VIDMODE_ABR:
+            break;
+        case HAL_VIDMODE_AVBR:
+            break;
+        default:
+            HAL_ERROR("i6_venc", "RcParam H.264 encoder does not support this mode!");
+        }
+    }
+    else if (config->codec == HAL_VIDCODEC_H265)
+    {
+        switch (config->mode)
+        {
+        case HAL_VIDMODE_CBR:
+            RcParam.stParamH265Cbr.u32MinQp = 12;
+            RcParam.stParamH265Cbr.u32MaxQp = 48;
+            RcParam.stParamH265Cbr.s32IPQPDelta = -4;
+            break;
+        case HAL_VIDMODE_VBR:
+            break;
+        case HAL_VIDMODE_QP:
+            break;
+        case HAL_VIDMODE_ABR:
+            break;
+        case HAL_VIDMODE_AVBR:
+            break;
+        default:
+            HAL_ERROR("i6_venc", "RcParam H.265 encoder does not support this mode!");
+        }
+        if (ret = i6_venc.fnSetRcParam(index, &RcParam))
+        {
+            HAL_ERROR("i6_venc", "SetIntraRefresh error:%x\n", ret);
+            return ret;
+        }
+    }
+    else if (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG)
+    {
+        /* code */
+    }
+    else
+    {
+        HAL_ERROR("i6_venc", "RcParam This codec is not supported by the hardware!");
+    }
+
+    //帧内刷新
+    i6_venc_IntraRefresh intraRefreshConfig = {.Enable = 1, .RefreshLineNum = 3, .ReqIQp = 1};
+    if (ret = i6_venc.fnSetIntraRefresh(index, &intraRefreshConfig))
+    {
+        HAL_ERROR("i6_venc", "SetIntraRefresh error:%x\n", ret);
+        return ret;
+    }
 
     if (config->codec != HAL_VIDCODEC_JPG &&
         (ret = i6_venc.fnStartReceiving(index)))
@@ -1039,8 +1110,9 @@ void *i6_video_thread(void)
                                         outPack[j].nalu[n + 1].offset -
                                         outPack[j].nalu[n].offset;
                             }
-                            else{
-                                //HAL_DANGER("i6_venc", "naluCnt:%d\n",outPack[j].naluCnt);
+                            else
+                            {
+                                // HAL_DANGER("i6_venc", "naluCnt:%d\n",outPack[j].naluCnt);
                                 switch (i6_state[i].payload)
                                 {
                                 case HAL_VIDCODEC_H264:
