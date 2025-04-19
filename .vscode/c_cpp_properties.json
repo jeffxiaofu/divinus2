@@ -82,7 +82,8 @@
     {
       "name": "armhf-glibc",
       "includePath": [
-        "${workspaceFolder}/**"
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/src"
       ],
       "defines": [
         "__arm__"

@@ -510,7 +510,10 @@ void i6_region_init(void)
 
 int i6_region_setbitmap(int handle, hal_bitmap *bitmap)
 {
-    i6_rgn_bmp nativeBmp = {.data = bitmap->data, .pixFmt = I6_RGN_PIXFMT_ARGB1555, .size.height = bitmap->dim.height, .size.width = bitmap->dim.width};
+    i6_rgn_bmp nativeBmp = {.data = bitmap->data,
+                            .pixFmt = I6_RGN_PIXFMT_ARGB1555,
+                            .size.height = bitmap->dim.height,
+                            .size.width = bitmap->dim.width};
 
     return i6_rgn.fnSetBitmap(handle, &nativeBmp);
 }
@@ -655,7 +658,13 @@ int i6_video_create(char index, hal_vidconfig *config)
             break;
         case HAL_VIDMODE_AVBR:
             channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264AVBR : I6_VENC_RATEMODE_H264AVBR;
-            channel.rate.h264Avbr = (i6_venc_rate_h26xvbr){.gop = config->gop, .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10, .maxQual = config->maxQual, .minQual = config->minQual};
+            channel.rate.h264Avbr = (i6_venc_rate_h26xvbr){.gop = config->gop,
+                                                           .statTime = 1,
+                                                           .fpsNum = config->framerate,
+                                                           .fpsDen = 1,
+                                                           .maxBitrate = (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
+                                                           .maxQual = config->maxQual,
+                                                           .minQual = config->minQual};
             break;
         default:
             HAL_ERROR("i6_venc", "H.264 encoder does not support this mode!");
@@ -674,17 +683,18 @@ int i6_video_create(char index, hal_vidconfig *config)
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 attach:
+    // 创建VENC解码通道
     if (ret = i6_venc.fnCreateChannel(index, &channel))
     {
         HAL_ERROR("i6_venc", "CreateChannel error:%x\n", ret);
         return ret;
     }
 
-    //码率控制高级参数
+    // 码率控制高级参数
     i6_venc_RcParam_t RcParam;
     if (ret = i6_venc.fnGetRcParam(index, &RcParam))
     {
-        HAL_ERROR("i6_venc", "SetIntraRefresh error:%x\n", ret);
+        HAL_ERROR("i6_venc", "GetRcParam error:%x\n", ret);
         return ret;
     }
     if (config->codec == HAL_VIDCODEC_H264)
@@ -702,7 +712,7 @@ attach:
         case HAL_VIDMODE_AVBR:
             break;
         default:
-            HAL_ERROR("i6_venc", "RcParam H.264 encoder does not support this mode!");
+            HAL_ERROR("i6_venc", "RcParam: H264 erro video mode!\n");
         }
     }
     else if (config->codec == HAL_VIDCODEC_H265)
@@ -723,11 +733,11 @@ attach:
         case HAL_VIDMODE_AVBR:
             break;
         default:
-            HAL_ERROR("i6_venc", "RcParam H.265 encoder does not support this mode!");
+            HAL_ERROR("i6_venc", "RcParam: H265 erro video mode!\n");
         }
         if (ret = i6_venc.fnSetRcParam(index, &RcParam))
         {
-            HAL_ERROR("i6_venc", "SetIntraRefresh error:%x\n", ret);
+            HAL_ERROR("i6_venc", "SetRcParam error:%x\n", ret);
             return ret;
         }
     }
@@ -737,10 +747,10 @@ attach:
     }
     else
     {
-        HAL_ERROR("i6_venc", "RcParam This codec is not supported by the hardware!");
+        HAL_ERROR("i6_venc", "RcParam: MJPEG erro video mode!\n");
     }
 
-    //帧内刷新
+    // 帧内刷新
     i6_venc_IntraRefresh intraRefreshConfig = {.Enable = 1, .RefreshLineNum = 3, .ReqIQp = 1};
     if (ret = i6_venc.fnSetIntraRefresh(index, &intraRefreshConfig))
     {
@@ -748,8 +758,8 @@ attach:
         return ret;
     }
 
-    if (config->codec != HAL_VIDCODEC_JPG &&
-        (ret = i6_venc.fnStartReceiving(index)))
+    // 开始接收解码数据
+    if (config->codec != HAL_VIDCODEC_JPG && (ret = i6_venc.fnStartReceiving(index)))
         return ret;
 
     i6_state[index].payload = config->codec;
