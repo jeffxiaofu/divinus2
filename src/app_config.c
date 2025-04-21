@@ -199,6 +199,9 @@ enum ConfigError parse_app_config(void) {
     app_config.adc_device[0] = 0;
     app_config.adc_threshold = 128;
 
+    app_config.ExpoTimeMs = 0;
+    app_config.IntraRefresh = false;
+
     struct IniConfig ini;
     memset(&ini, 0, sizeof(struct IniConfig));
 
@@ -287,6 +290,16 @@ enum ConfigError parse_app_config(void) {
     if (err != CONFIG_OK)
         goto RET_ERR;
     parse_int(&ini, "isp", "antiflicker", -1, 60, &app_config.antiflicker);
+    char ExpoTimeMs[10];
+    parse_param_value(&ini, "isp", "ExpoTimeMs", ExpoTimeMs);
+    if (ExpoTimeMs=="auto")
+    {
+        app_config.ExpoTimeMs = 0;
+    }else
+    {
+        app_config.ExpoTimeMs = atoi(ExpoTimeMs);
+    }
+    
 
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
 
@@ -350,6 +363,7 @@ enum ConfigError parse_app_config(void) {
     }
 
     parse_bool(&ini, "mp4", "enable", &app_config.mp4_enable);
+    //HAL_INFO("app_config","mp4_enable=%d\n", app_config.mp4_enable);
     if (app_config.mp4_enable) {
         {
             const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
@@ -491,6 +505,9 @@ enum ConfigError parse_app_config(void) {
         if (err != CONFIG_OK)
             goto RET_ERR;
     }
+
+    parse_bool(&ini, "fpv", "IntraRefresh", &app_config.IntraRefresh);
+    //HAL_INFO("app_config","IntraRefresh=%d\n", app_config.IntraRefresh);
 
     free(ini.str);
     return CONFIG_OK;

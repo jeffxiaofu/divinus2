@@ -112,6 +112,7 @@ typedef struct {
     hal_vidprofile profile;
     unsigned char gop, framerate, minQual, maxQual;
     unsigned short bitrate, maxBitrate;
+    unsigned char IntraRefresh;
 } hal_vidconfig;
 
 typedef struct {

@@ -593,7 +593,8 @@ int enable_mp4(void) {
         config.framerate = app_config.mp4_fps;
         config.bitrate = app_config.mp4_bitrate;
         config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
-
+        config.IntraRefresh = app_config.IntraRefresh? 1 : 0;
+        //HAL_INFO("media", "config.IntraRefresh:%d\n", config.IntraRefresh);
         switch (plat) {
 #if defined(__arm__)
             case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
@@ -813,7 +814,7 @@ int start_sdk(void) {
         switch (plat) {
 #if defined(__arm__)
             case HAL_PLATFORM_I3:  i3_config_load(app_config.sensor_config); break;
-            case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); break;
+            case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config,app_config.ExpoTimeMs); break;
             case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_M6:  m6_config_load(app_config.sensor_config); break;
 #elif defined(__mips__)

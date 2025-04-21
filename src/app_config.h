@@ -38,6 +38,7 @@ struct AppConfig {
     bool mirror;
     bool flip;
     int antiflicker;
+    int ExpoTimeMs;
 
     bool osd_enable;
     bool mdns_enable;
@@ -95,6 +96,8 @@ struct AppConfig {
     unsigned int http_post_height;
     unsigned int http_post_qfactor;
     unsigned int http_post_interval;
+    
+    bool IntraRefresh;
 };
 
 extern struct AppConfig app_config;
