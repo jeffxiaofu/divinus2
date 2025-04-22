@@ -1,7 +1,6 @@
 #pragma once
 
 #include "i6_common.h"
-
 typedef enum __attribute__((aligned(4)))
 {
     SS_AE_MODE_A,  // auto
@@ -39,31 +38,17 @@ static int i6_isp_load(i6_isp_impl *isp_lib)
     isp_lib->handleCus3a = dlopen("libcus3a.so", RTLD_LAZY | RTLD_GLOBAL);
 
     if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_LAZY | RTLD_GLOBAL)))
+    {
         HAL_ERROR("i6_isp", "Failed to load library!\nError: %s\n", dlerror());
-
-    if (!(isp_lib->fnLoadChannelConfig = (int (*)(int channel, char *path, unsigned int key))
-              hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_API_CmdLoadBinFile")))
         return EXIT_FAILURE;
-
-    if (!(isp_lib->fnSetColorToGray = (int (*)(int channel, char *enable))
-              hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_IQ_SetColorToGray")))
-        return EXIT_FAILURE;
-
-    if (!(isp_lib->fnSetExpoMode = (int (*)(int channel, i6_ISP_AE_MODE_TYPE_e *data))
-              hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_SetExpoMode")))
-        return EXIT_FAILURE;
-
-    if (!(isp_lib->fnGetExpoMode = (int (*)(int channel, i6_ISP_AE_MODE_TYPE_e *data))
-              hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_GetExpoMode")))
-        return EXIT_FAILURE;
-
-    if (!(isp_lib->fnSetManualExpo = (int (*)(int channel, i6_ISP_AE_EXPO_VALUE_TYPE_t *data))
-              hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_SetManualExpo")))
-        return EXIT_FAILURE;
-
-    if (!(isp_lib->fnGetManualExpo = (int (*)(int channel, i6_ISP_AE_EXPO_VALUE_TYPE_t *data))
-              hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_GetManualExpo")))
-        return EXIT_FAILURE;
+    }
+    
+    LOAD_SYMBOL("i6_isp", isp_lib->handle, "MI_ISP_API_CmdLoadBinFile", isp_lib->fnLoadChannelConfig);
+    LOAD_SYMBOL("i6_isp", isp_lib->handle, "MI_ISP_IQ_SetColorToGray", isp_lib->fnSetColorToGray);
+    LOAD_SYMBOL("i6_isp", isp_lib->handle, "MI_ISP_AE_SetExpoMode", isp_lib->fnSetExpoMode);
+    LOAD_SYMBOL("i6_isp", isp_lib->handle, "MI_ISP_AE_GetExpoMode", isp_lib->fnGetExpoMode);
+    LOAD_SYMBOL("i6_isp", isp_lib->handle, "MI_ISP_AE_SetManualExpo", isp_lib->fnSetManualExpo);
+    LOAD_SYMBOL("i6_isp", isp_lib->handle, "MI_ISP_AE_GetManualExpo", isp_lib->fnGetManualExpo);
 
     return EXIT_SUCCESS;
 }

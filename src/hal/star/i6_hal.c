@@ -225,7 +225,7 @@ int i6_channel_unbind(char index)
     return EXIT_SUCCESS;
 }
 
-int i6_config_load(char *path,int ExpoTimeMs)
+int i6_config_load(char *path, int ExpoTimeMs)
 {
     int ret;
     if (ret = i6_isp.fnLoadChannelConfig(_i6_isp_chn, path, 1234))
@@ -240,11 +240,14 @@ int i6_config_load(char *path,int ExpoTimeMs)
         i6_ISP_AE_EXPO_VALUE_TYPE_t _i6_isp_expo;
         if (ret = i6_isp.fnGetManualExpo(_i6_isp_chn, &_i6_isp_expo))
             return ret;
-        //_i6_isp_expo.u32FNx10 = 1*10;
+        _i6_isp_expo.u32FNx10 = 1 * 10;
         _i6_isp_expo.u32US = ExpoTimeMs * 1000;
+        //_i6_isp_expo.u32ISPGain = 1;
+        float SensorGain = 4.5;
+        _i6_isp_expo.u32SensorGain = SensorGain * 1024;
         if (ret = i6_isp.fnSetManualExpo(_i6_isp_chn, &_i6_isp_expo))
             return ret;
-        HAL_INFO("i6_hal", "Set ExpoTime to %d ms\n", ExpoTimeMs);
+        HAL_INFO("i6_hal", "FN:%d ExpoTimeMs:%d SensorGain:%.2f\n", _i6_isp_expo.u32FNx10 / 10, ExpoTimeMs, SensorGain);
     }
     return ret;
 }
@@ -768,19 +771,19 @@ attach:
     {
         HAL_ERROR("i6_venc", "RcParam: MJPEG erro video mode!\n");
     }
-    HAL_INFO("i6_hal", "MinQp:%d,MaxQp:%d,IPQPDelta:%d\n",
+    HAL_INFO("i6_venc", "MinQp:%d,MaxQp:%d,IPQPDelta:%d\n",
              RcParam.stParamH265Cbr.u32MinQp, RcParam.stParamH265Cbr.u32MaxQp, RcParam.stParamH265Cbr.s32IPQPDelta);
-    
+
     if (config->IntraRefresh)
     {
         // 帧内刷新
         i6_venc_IntraRefresh intraRefreshConfig = {.Enable = 1, .RefreshLineNum = 3, .ReqIQp = 1};
         if (ret = i6_venc.fnSetIntraRefresh(index, &intraRefreshConfig))
         {
-            HAL_ERROR("i6_hal", "SetIntraRefresh error:%x\n", ret);
+            HAL_ERROR("i6_venc", "SetIntraRefresh error:%x\n", ret);
             return ret;
         }
-        HAL_INFO("i6_hal", "IntraRefresh is enabled!\n");
+        HAL_INFO("i6_venc", "IntraRefresh is enabled!\n");
     }
 
     // 开始接收解码数据
