@@ -14,25 +14,26 @@ isp:
   mirror: false
   flip: false
   antiflicker: 60
+  ExpoTimeMs: 0
 
 osd:
-  enable: true
+  enable: false
 
 mdns:
   enable: false
 
 rtsp:
-  enable: true
+  enable: false
   enable_auth: false
   auth_user: admin
   auth_pass: 12345
   port: 554
 
 stream:
-  enable: false
-  udp_srcport: 5600
+  enable: true
+  udp_srcport: 5000
   dest:
-    - udp://239.255.255.0:5600
+    - udp://127.0.0.1:5600
 
 night_mode:
   enable: false
@@ -63,25 +64,28 @@ audio:
 
 mp4:
   enable: true
-  codec: H264
+  codec: H265
   mode: CBR
-  width: 3840
-  height: 2160
-  fps: 20
-  gop: 40
-  bitrate: 1024
+  width: 1280
+  height: 720
+  fps: 120
+  gop: 120
+  bitrate: 3073
   profile: 2
 
 jpeg:
   enable: false
-  width: 1920
-  height: 1080
+  width: 1280
+  height: 720
   qfactor: 70
 
 mjpeg:
-  enable: true
+  enable: false
   mode: CBR
-  width: 3840
-  height: 2160
+  width: 1280
+  height: 720
   fps: 20
   bitrate: 1024
+
+fpv:
+  IntraRefresh: false
