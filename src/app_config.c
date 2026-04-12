@@ -133,6 +133,15 @@ int save_app_config(void) {
     fprintf(file, "  fps: %d\n", app_config.mjpeg_fps);
     fprintf(file, "  bitrate: %d\n", app_config.mjpeg_bitrate);
 
+    fprintf(file, "roi:\n");
+    fprintf(file, "  enable: %s\n", app_config.roi_enable ? "true" : "false");
+    fprintf(file, "  center_x: %d\n", app_config.roi_center_x);
+    fprintf(file, "  center_y: %d\n", app_config.roi_center_y);
+    fprintf(file, "  width_pct: %d\n", app_config.roi_width_pct);
+    fprintf(file, "  height_pct: %d\n", app_config.roi_height_pct);
+    fprintf(file, "  center_delta_qp: %d\n", app_config.roi_center_delta_qp);
+    fprintf(file, "  surround_delta_qp: %d\n", app_config.roi_surround_delta_qp);
+
     fprintf(file, "http_post:\n");
     fprintf(file, "  enable: %s\n", app_config.http_post_enable ? "true" : "false");
     fprintf(file, "  host: %s\n", app_config.http_post_host);
@@ -201,6 +210,14 @@ enum ConfigError parse_app_config(void) {
 
     app_config.ExpoTimeMs = 0;
     app_config.IntraRefresh = false;
+
+    app_config.roi_enable = false;
+    app_config.roi_center_x = 50;
+    app_config.roi_center_y = 50;
+    app_config.roi_width_pct = 60;
+    app_config.roi_height_pct = 50;
+    app_config.roi_center_delta_qp = -4;
+    app_config.roi_surround_delta_qp = 4;
 
     struct IniConfig ini;
     memset(&ini, 0, sizeof(struct IniConfig));
@@ -507,7 +524,14 @@ enum ConfigError parse_app_config(void) {
     }
 
     parse_bool(&ini, "fpv", "IntraRefresh", &app_config.IntraRefresh);
-    //HAL_INFO("app_config","IntraRefresh=%d\n", app_config.IntraRefresh);
+
+    parse_bool(&ini, "roi", "enable", &app_config.roi_enable);
+    parse_int(&ini, "roi", "center_x", 0, 100, (int *)&app_config.roi_center_x);
+    parse_int(&ini, "roi", "center_y", 0, 100, (int *)&app_config.roi_center_y);
+    parse_int(&ini, "roi", "width_pct", 1, 100, (int *)&app_config.roi_width_pct);
+    parse_int(&ini, "roi", "height_pct", 1, 100, (int *)&app_config.roi_height_pct);
+    parse_int(&ini, "roi", "center_delta_qp", -12, 12, &app_config.roi_center_delta_qp);
+    parse_int(&ini, "roi", "surround_delta_qp", -12, 12, &app_config.roi_surround_delta_qp);
 
     free(ini.str);
     return CONFIG_OK;

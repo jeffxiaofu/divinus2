@@ -113,6 +113,11 @@ typedef struct {
     unsigned char gop, framerate, minQual, maxQual;
     unsigned short bitrate, maxBitrate;
     unsigned char IntraRefresh;
+    bool roi_enable;
+    unsigned int roi_center_x, roi_center_y;
+    unsigned int roi_width_pct, roi_height_pct;
+    int roi_center_delta_qp;
+    int roi_surround_delta_qp;
 } hal_vidconfig;
 
 typedef struct {

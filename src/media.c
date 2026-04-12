@@ -595,6 +595,13 @@ int enable_mp4(void) {
         config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
         config.IntraRefresh = app_config.IntraRefresh? 1 : 0;
         //HAL_INFO("media", "config.IntraRefresh:%d\n", config.IntraRefresh);
+        config.roi_enable = app_config.roi_enable;
+        config.roi_center_x = app_config.roi_center_x;
+        config.roi_center_y = app_config.roi_center_y;
+        config.roi_width_pct = app_config.roi_width_pct;
+        config.roi_height_pct = app_config.roi_height_pct;
+        config.roi_center_delta_qp = app_config.roi_center_delta_qp;
+        config.roi_surround_delta_qp = app_config.roi_surround_delta_qp;
         switch (plat) {
 #if defined(__arm__)
             case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;

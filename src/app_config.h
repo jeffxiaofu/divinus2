@@ -98,6 +98,15 @@ struct AppConfig {
     unsigned int http_post_interval;
     
     bool IntraRefresh;
+
+    // [roi]
+    bool roi_enable;
+    unsigned int roi_center_x;
+    unsigned int roi_center_y;
+    unsigned int roi_width_pct;
+    unsigned int roi_height_pct;
+    int roi_center_delta_qp;
+    int roi_surround_delta_qp;
 };
 
 extern struct AppConfig app_config;
