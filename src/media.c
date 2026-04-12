@@ -593,6 +593,8 @@ int enable_mp4(void) {
         config.framerate = app_config.mp4_fps;
         config.bitrate = app_config.mp4_bitrate;
         config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
+        config.minQual = app_config.mp4_minQual;
+        config.maxQual = app_config.mp4_maxQual;
         config.IntraRefresh = app_config.IntraRefresh? 1 : 0;
         //HAL_INFO("media", "config.IntraRefresh:%d\n", config.IntraRefresh);
         config.roi_enable = app_config.roi_enable;

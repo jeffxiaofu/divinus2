@@ -72,6 +72,10 @@ struct AppConfig {
     unsigned int mp4_profile;
     unsigned int mp4_bitrate;
 
+    // [mp4_vbr] — VBR quality range (used when mp4_mode=VBR)
+    unsigned int mp4_minQual;
+    unsigned int mp4_maxQual;
+
     // [jpeg]
     bool jpeg_enable;
     unsigned int jpeg_width;
