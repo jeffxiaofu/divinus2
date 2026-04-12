@@ -794,47 +794,52 @@ attach:
     if (config->roi_enable &&
         (config->codec == HAL_VIDCODEC_H264 || config->codec == HAL_VIDCODEC_H265)) {
 
-        if (!i6_venc.fnSetRoiAttr) {
-            HAL_INFO("i6_venc", "ROI skipped: fnSetRoiAttr is NULL (no symbol found)\n");
+        if (!i6_venc.fnSetRoiCfg) {
+            HAL_INFO("i6_venc", "ROI skipped: fnSetRoiCfg is NULL\n");
         } else {
-            // Region 0: center — better quality (negative QP delta)
-            i6_venc_roi_attr roi0 = {
+            // ROI coordinates must be 64-byte aligned for H.265 CTU size
+            #define ROI_ALIGN(x) (((x) + 63) & ~63)
+
+            unsigned int cx = config->width  * config->roi_center_x / 100;
+            unsigned int cy = config->height * config->roi_center_y / 100;
+            unsigned int rw = config->width  * config->roi_width_pct  / 100;
+            unsigned int rh = config->height * config->roi_height_pct / 100;
+
+            // Compute center-aligned rect, then align to 64-pixel grid
+            unsigned int rx = cx > rw / 2 ? ROI_ALIGN(cx - rw / 2) : 0;
+            unsigned int ry = cy > rh / 2 ? ROI_ALIGN(cy - rh / 2) : 0;
+            rw = ROI_ALIGN(rw);
+            rh = ROI_ALIGN(rh);
+            // Clamp
+            if (rx + rw > config->width)  rw = config->width  - rx;
+            if (ry + rh > config->height) rh = config->height - ry;
+
+            // Region 0: center — better quality
+            i6_venc_roi_cfg roi0 = {
                 .u32Index = 0,
                 .bEnable = 1,
                 .s32QpDelta = config->roi_center_delta_qp,
-                .stRect = {
-                    .x = (unsigned short)((int)config->width  * config->roi_center_x / 100
-                                          - (int)config->width  * config->roi_width_pct / 200),
-                    .y = (unsigned short)((int)config->height * config->roi_center_y / 100
-                                          - (int)config->height * config->roi_height_pct / 200),
-                    .width  = (unsigned short)(config->width  * config->roi_width_pct  / 100),
-                    .height = (unsigned short)(config->height * config->roi_height_pct / 100)
-                }
+                .u32X = rx, .u32Y = ry,
+                .u32Width = rw, .u32Height = rh
             };
-            // Clamp to frame bounds
-            if ((short)roi0.stRect.x < 0) { roi0.stRect.x = 0; }
-            if ((short)roi0.stRect.y < 0) { roi0.stRect.y = 0; }
-            if (roi0.stRect.x + roi0.stRect.width  > config->width)
-                roi0.stRect.width  = config->width  - roi0.stRect.x;
-            if (roi0.stRect.y + roi0.stRect.height > config->height)
-                roi0.stRect.height = config->height - roi0.stRect.y;
-
-            // Region 1: surround (full frame) — worse quality (positive QP delta)
-            i6_venc_roi_attr roi1 = {
+            // Region 1: full frame — lower quality
+            i6_venc_roi_cfg roi1 = {
                 .u32Index = 1,
                 .bEnable = 1,
                 .s32QpDelta = config->roi_surround_delta_qp,
-                .stRect = { .x = 0, .y = 0, .width = config->width, .height = config->height }
+                .u32X = 0, .u32Y = 0,
+                .u32Width = config->width, .u32Height = config->height
             };
 
-            HAL_INFO("i6_venc", "ROI: ch%d, codec=%d, rect=(%u,%u,%u,%u), qp=%+d/%+d\n",
-                index, config->codec,
-                roi0.stRect.x, roi0.stRect.y, roi0.stRect.width, roi0.stRect.height,
-                config->roi_center_delta_qp, config->roi_surround_delta_qp);
-            int ret_roi0 = i6_venc.fnSetRoiAttr(index, &roi0);
-            int ret_roi1 = i6_venc.fnSetRoiAttr(index, &roi1);
-            if (ret_roi0 != 0 || ret_roi1 != 0)
-                HAL_INFO("i6_venc", "ROI failed: center=%#x surround=%#x\n", ret_roi0, ret_roi1);
+            HAL_INFO("i6_venc", "ROI: ch%d, rect0=(%u,%u,%u,%u) qp%+d, rect1=(0,0,%u,%u) qp%+d, sizeof=%d\n",
+                index, roi0.u32X, roi0.u32Y, roi0.u32Width, roi0.u32Height,
+                roi0.s32QpDelta, roi1.u32Width, roi1.u32Height, roi1.s32QpDelta,
+                (int)sizeof(i6_venc_roi_cfg));
+
+            int ret0 = i6_venc.fnSetRoiCfg(index, &roi0);
+            int ret1 = i6_venc.fnSetRoiCfg(index, &roi1);
+            if (ret0 != 0 || ret1 != 0)
+                HAL_INFO("i6_venc", "ROI failed: region0=%#x region1=%#x\n", ret0, ret1);
             else
                 HAL_INFO("i6_venc", "ROI OK\n");
         }

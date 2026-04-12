@@ -408,8 +408,11 @@ typedef struct
     unsigned int u32Index;
     unsigned int bEnable;
     int s32QpDelta;
-    i6_common_rect stRect;
-} i6_venc_roi_attr;
+    unsigned int u32X;
+    unsigned int u32Y;
+    unsigned int u32Width;
+    unsigned int u32Height;
+} i6_venc_roi_cfg;
 
 typedef struct
 {
@@ -441,7 +444,7 @@ typedef struct
     int (*fnSetIntraRefresh)(int channel, i6_venc_IntraRefresh *config);
     int (*fnGetIntraRefresh)(int channel, i6_venc_IntraRefresh *config);
 
-    int (*fnSetRoiAttr)(int channel, i6_venc_roi_attr *attr);
+    int (*fnSetRoiCfg)(int channel, i6_venc_roi_cfg *cfg);
 
     int (*fnRequestIdr)(int channel, char instant);
     int (*fnStartReceiving)(int channel);
@@ -475,22 +478,11 @@ static int i6_venc_load(i6_venc_impl *venc_lib)
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_SetIntraRefresh", venc_lib->fnSetIntraRefresh);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_GetIntraRefresh", venc_lib->fnGetIntraRefresh);
     {
-        // Try multiple possible ROI symbol names across MStar SDK versions
-        static const char *roi_syms[] = {
-            "MI_VENC_SetRoiAttr",
-            "MI_VENC_SetRoiCfg",
-            "MI_VENC_SetRoi",
-        };
-        venc_lib->fnSetRoiAttr = NULL;
-        for (int i = 0; i < 3; i++) {
-            venc_lib->fnSetRoiAttr = (int(*)(int, i6_venc_roi_attr*))
-                dlsym(venc_lib->handle, roi_syms[i]);
-            if (venc_lib->fnSetRoiAttr) {
-                HAL_INFO("i6_venc", "ROI symbol found: %s\n", roi_syms[i]);
-                break;
-            }
-        }
-        if (!venc_lib->fnSetRoiAttr)
+        venc_lib->fnSetRoiCfg = (int(*)(int, i6_venc_roi_cfg*))
+            dlsym(venc_lib->handle, "MI_VENC_SetRoiCfg");
+        if (venc_lib->fnSetRoiCfg)
+            HAL_INFO("i6_venc", "ROI symbol found: MI_VENC_SetRoiCfg\n");
+        else
             HAL_INFO("i6_venc", "No ROI symbol found in libmi_venc.so\n");
     }
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_RequestIdr", venc_lib->fnRequestIdr);
