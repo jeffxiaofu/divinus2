@@ -474,8 +474,25 @@ static int i6_venc_load(i6_venc_impl *venc_lib)
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_SetInputSourceConfig", venc_lib->fnSetSourceConfig);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_SetIntraRefresh", venc_lib->fnSetIntraRefresh);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_GetIntraRefresh", venc_lib->fnGetIntraRefresh);
-    venc_lib->fnSetRoiAttr = (int(*)(int, i6_venc_roi_attr*))
-        dlsym(venc_lib->handle, "MI_VENC_SetRoiAttr");
+    {
+        // Try multiple possible ROI symbol names across MStar SDK versions
+        static const char *roi_syms[] = {
+            "MI_VENC_SetRoiAttr",
+            "MI_VENC_SetRoiCfg",
+            "MI_VENC_SetRoi",
+        };
+        venc_lib->fnSetRoiAttr = NULL;
+        for (int i = 0; i < 3; i++) {
+            venc_lib->fnSetRoiAttr = (int(*)(int, i6_venc_roi_attr*))
+                dlsym(venc_lib->handle, roi_syms[i]);
+            if (venc_lib->fnSetRoiAttr) {
+                HAL_INFO("i6_venc", "ROI symbol found: %s\n", roi_syms[i]);
+                break;
+            }
+        }
+        if (!venc_lib->fnSetRoiAttr)
+            HAL_INFO("i6_venc", "No ROI symbol found in libmi_venc.so\n");
+    }
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_RequestIdr", venc_lib->fnRequestIdr);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_StartRecvPic", venc_lib->fnStartReceiving);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_StartRecvPicEx", venc_lib->fnStartReceivingEx);
