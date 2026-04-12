@@ -777,7 +777,7 @@ attach:
     if (config->IntraRefresh)
     {
         // 帧内刷新
-        i6_venc_IntraRefresh intraRefreshConfig = {.Enable = 1, .RefreshLineNum = 3, .ReqIQp = 1};
+        i6_venc_IntraRefresh intraRefreshConfig = {.Enable = 1, .RefreshLineNum = 150, .ReqIQp = 10};
         if (ret = i6_venc.fnSetIntraRefresh(index, &intraRefreshConfig))
         {
             HAL_ERROR("i6_venc", "SetIntraRefresh error:%x\n", ret);
