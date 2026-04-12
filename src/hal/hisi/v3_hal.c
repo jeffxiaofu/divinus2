@@ -604,63 +604,6 @@ attach:
         (ret = v3_venc.fnStartReceiving(index)))
         return ret;
 
-    if (config->roi_enable && config->codec != HAL_VIDCODEC_JPG &&
-        config->codec != HAL_VIDCODEC_MJPG && v3_venc.fnSetRoiCfg) {
-        v3_venc_roi_attr roi = {
-            .u32MaxTotalIdx = V3_VENC_ROI_MAX_REGIONS,
-            .u32AbsQp = 0
-        };
-
-        // Region 0: center — higher quality (negative QP delta)
-        roi.astRoiCfg[0] = (v3_venc_roi_cfg){
-            .u32Index = 0,
-            .u32Enable = 1,
-            .stRect = {
-                .x = (int)(config->width * config->roi_center_x / 100) -
-                     (int)(config->width * config->roi_width_pct / 200),
-                .y = (int)(config->height * config->roi_center_y / 100) -
-                     (int)(config->height * config->roi_height_pct / 200),
-                .width = config->width * config->roi_width_pct / 100,
-                .height = config->height * config->roi_height_pct / 100
-            },
-            .s32QpDelta = config->roi_center_delta_qp
-        };
-
-        // Clamp center rect to frame bounds
-        if (roi.astRoiCfg[0].stRect.x < 0)
-            roi.astRoiCfg[0].stRect.x = 0;
-        if (roi.astRoiCfg[0].stRect.y < 0)
-            roi.astRoiCfg[0].stRect.y = 0;
-        if (roi.astRoiCfg[0].stRect.x + roi.astRoiCfg[0].stRect.width > config->width)
-            roi.astRoiCfg[0].stRect.width = config->width - roi.astRoiCfg[0].stRect.x;
-        if (roi.astRoiCfg[0].stRect.y + roi.astRoiCfg[0].stRect.height > config->height)
-            roi.astRoiCfg[0].stRect.height = config->height - roi.astRoiCfg[0].stRect.y;
-
-        // Region 1: full frame — lower quality (positive QP delta)
-        // Center region 0 takes priority where they overlap (lowest QP wins)
-        roi.astRoiCfg[1] = (v3_venc_roi_cfg){
-            .u32Index = 1,
-            .u32Enable = 1,
-            .stRect = {
-                .x = 0,
-                .y = 0,
-                .width = config->width,
-                .height = config->height
-            },
-            .s32QpDelta = config->roi_surround_delta_qp
-        };
-
-        int ret_roi = v3_venc.fnSetRoiCfg(index, &roi);
-        if (ret_roi != 0)
-            HAL_WARNING("v3_venc", "ROI config failed for ch%d: %#x\n", index, ret_roi);
-        else
-            HAL_INFO("v3_venc", "ROI enabled for ch%d: center %dx%d at (%d,%d), QP %+d/%+d\n",
-                index,
-                roi.astRoiCfg[0].stRect.width, roi.astRoiCfg[0].stRect.height,
-                roi.astRoiCfg[0].stRect.x, roi.astRoiCfg[0].stRect.y,
-                config->roi_center_delta_qp, config->roi_surround_delta_qp);
-    }
-
     v3_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;

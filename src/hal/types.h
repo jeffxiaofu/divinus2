@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "macros.h"
 
 #ifndef ALIGN_BACK

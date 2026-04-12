@@ -350,21 +350,6 @@ typedef struct {
     };
 } v3_venc_strm;
 
-#define V3_VENC_ROI_MAX_REGIONS 8
-
-typedef struct {
-    unsigned int u32Index;
-    unsigned int u32Enable;
-    v3_common_rect stRect;
-    int s32QpDelta;
-} v3_venc_roi_cfg;
-
-typedef struct {
-    unsigned int u32MaxTotalIdx;
-    unsigned int u32AbsQp;
-    v3_venc_roi_cfg astRoiCfg[V3_VENC_ROI_MAX_REGIONS];
-} v3_venc_roi_attr;
-
 typedef struct {
     void *handle;
 
@@ -390,8 +375,6 @@ typedef struct {
     int (*fnStartReceiving)(int channel);
     int (*fnStartReceivingEx)(int channel, int *count);
     int (*fnStopReceiving)(int channel);
-
-    int (*fnSetRoiCfg)(int channel, v3_venc_roi_attr *attr);
 } v3_venc_impl;
 
 static int v3_venc_load(v3_venc_impl *venc_lib) {
@@ -465,9 +448,6 @@ static int v3_venc_load(v3_venc_impl *venc_lib) {
     if (!(venc_lib->fnStopReceiving = (int(*)(int channel))
         hal_symbol_load("v3_venc", venc_lib->handle, "HI_MPI_VENC_StopRecvPic")))
         return EXIT_FAILURE;
-
-    venc_lib->fnSetRoiCfg = (int(*)(int channel, v3_venc_roi_attr *attr))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_SetRoiCfg");
 
     return EXIT_SUCCESS;
 }

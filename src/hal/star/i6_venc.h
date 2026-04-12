@@ -401,6 +401,16 @@ typedef struct
     unsigned int ReqIQp;
 } i6_venc_IntraRefresh;
 
+#define I6_VENC_ROI_MAX_REGIONS 8
+
+typedef struct
+{
+    unsigned int u32Index;
+    unsigned int bEnable;
+    int s32QpDelta;
+    i6_common_rect stRect;
+} i6_venc_roi_attr;
+
 typedef struct
 {
     void *handle;
@@ -430,6 +440,8 @@ typedef struct
 
     int (*fnSetIntraRefresh)(int channel, i6_venc_IntraRefresh *config);
     int (*fnGetIntraRefresh)(int channel, i6_venc_IntraRefresh *config);
+
+    int (*fnSetRoiAttr)(int channel, i6_venc_roi_attr *attr);
 
     int (*fnRequestIdr)(int channel, char instant);
     int (*fnStartReceiving)(int channel);
@@ -462,6 +474,8 @@ static int i6_venc_load(i6_venc_impl *venc_lib)
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_SetInputSourceConfig", venc_lib->fnSetSourceConfig);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_SetIntraRefresh", venc_lib->fnSetIntraRefresh);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_GetIntraRefresh", venc_lib->fnGetIntraRefresh);
+    venc_lib->fnSetRoiAttr = (int(*)(int, i6_venc_roi_attr*))
+        dlsym(venc_lib->handle, "MI_VENC_SetRoiAttr");
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_RequestIdr", venc_lib->fnRequestIdr);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_StartRecvPic", venc_lib->fnStartReceiving);
     LOAD_SYMBOL("i6_venc", venc_lib->handle, "MI_VENC_StartRecvPicEx", venc_lib->fnStartReceivingEx);

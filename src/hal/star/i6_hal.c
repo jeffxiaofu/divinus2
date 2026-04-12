@@ -790,6 +790,51 @@ attach:
     if (config->codec != HAL_VIDCODEC_JPG && (ret = i6_venc.fnStartReceiving(index)))
         return ret;
 
+    // ROI: Region of Interest — higher quality in center, lower on edges
+    if (config->roi_enable &&
+        (config->codec == HAL_VIDCODEC_H264 || config->codec == HAL_VIDCODEC_H265) &&
+        i6_venc.fnSetRoiAttr) {
+
+        // Region 0: center — better quality (negative QP delta)
+        i6_venc_roi_attr roi0 = {
+            .u32Index = 0,
+            .bEnable = 1,
+            .s32QpDelta = config->roi_center_delta_qp,
+            .stRect = {
+                .x = (unsigned short)((int)config->width  * config->roi_center_x / 100
+                                      - (int)config->width  * config->roi_width_pct / 200),
+                .y = (unsigned short)((int)config->height * config->roi_center_y / 100
+                                      - (int)config->height * config->roi_height_pct / 200),
+                .width  = (unsigned short)(config->width  * config->roi_width_pct  / 100),
+                .height = (unsigned short)(config->height * config->roi_height_pct / 100)
+            }
+        };
+        // Clamp to frame bounds
+        if ((short)roi0.stRect.x < 0) { roi0.stRect.x = 0; }
+        if ((short)roi0.stRect.y < 0) { roi0.stRect.y = 0; }
+        if (roi0.stRect.x + roi0.stRect.width  > config->width)
+            roi0.stRect.width  = config->width  - roi0.stRect.x;
+        if (roi0.stRect.y + roi0.stRect.height > config->height)
+            roi0.stRect.height = config->height - roi0.stRect.y;
+
+        // Region 1: surround (full frame) — worse quality (positive QP delta)
+        i6_venc_roi_attr roi1 = {
+            .u32Index = 1,
+            .bEnable = 1,
+            .s32QpDelta = config->roi_surround_delta_qp,
+            .stRect = { .x = 0, .y = 0, .width = config->width, .height = config->height }
+        };
+
+        int ret_roi0 = i6_venc.fnSetRoiAttr(index, &roi0);
+        int ret_roi1 = i6_venc.fnSetRoiAttr(index, &roi1);
+        if (ret_roi0 != 0 || ret_roi1 != 0)
+            HAL_INFO("i6_venc", "ROI config failed (center:%#x surround:%#x)\n", ret_roi0, ret_roi1);
+        else
+            HAL_INFO("i6_venc", "ROI enabled: center %ux%u at (%u,%u) QP%+d, surround QP%+d\n",
+                roi0.stRect.width, roi0.stRect.height, roi0.stRect.x, roi0.stRect.y,
+                config->roi_center_delta_qp, config->roi_surround_delta_qp);
+    }
+
     i6_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
