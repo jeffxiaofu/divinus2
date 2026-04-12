@@ -822,24 +822,14 @@ attach:
                 .u32X = rx, .u32Y = ry,
                 .u32Width = rw, .u32Height = rh
             };
-            // Region 1: full frame — lower quality
-            i6_venc_roi_cfg roi1 = {
-                .u32Index = 1,
-                .bEnable = 1,
-                .s32QpDelta = config->roi_surround_delta_qp,
-                .u32X = 0, .u32Y = 0,
-                .u32Width = config->width, .u32Height = config->height
-            };
 
-            HAL_INFO("i6_venc", "ROI: ch%d, rect0=(%u,%u,%u,%u) qp%+d, rect1=(0,0,%u,%u) qp%+d, sizeof=%d\n",
+            HAL_INFO("i6_venc", "ROI: ch%d, rect=(%u,%u,%u,%u) qp%+d, sizeof=%d\n",
                 index, roi0.u32X, roi0.u32Y, roi0.u32Width, roi0.u32Height,
-                roi0.s32QpDelta, roi1.u32Width, roi1.u32Height, roi1.s32QpDelta,
-                (int)sizeof(i6_venc_roi_cfg));
+                roi0.s32QpDelta, (int)sizeof(i6_venc_roi_cfg));
 
             int ret0 = i6_venc.fnSetRoiCfg(index, &roi0);
-            int ret1 = i6_venc.fnSetRoiCfg(index, &roi1);
-            if (ret0 != 0 || ret1 != 0)
-                HAL_INFO("i6_venc", "ROI failed: region0=%#x region1=%#x\n", ret0, ret1);
+            if (ret0 != 0)
+                HAL_INFO("i6_venc", "ROI failed: %#x\n", ret0);
             else
                 HAL_INFO("i6_venc", "ROI OK\n");
         }
