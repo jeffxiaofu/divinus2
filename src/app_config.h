@@ -111,6 +111,14 @@ struct AppConfig {
     unsigned int roi_height_pct;
     int roi_center_delta_qp;
     int roi_surround_delta_qp;
+
+    // [uvc]
+    bool uvc_enable;
+    char uvc_device[64];
+    unsigned int uvc_width;
+    unsigned int uvc_height;
+    unsigned int uvc_fps;
+    char uvc_format[8];
 };
 
 extern struct AppConfig app_config;

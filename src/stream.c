@@ -559,3 +559,153 @@ static unsigned long long get_timestamp_us()
     gettimeofday(&tv, NULL);
     return (unsigned long long)tv.tv_sec * 1000000 + tv.tv_usec;
 }
+
+/* Standard JPEG luminance quantization table (Q=50 baseline) */
+static const unsigned char std_lum_quant[64] = {
+    16, 11, 10, 16,  24,  40,  51,  61,
+    12, 12, 14, 19,  26,  58,  60,  55,
+    14, 13, 16, 24,  40,  57,  69,  56,
+    14, 17, 22, 29,  51,  87,  80,  62,
+    18, 22, 37, 56,  68, 109, 103,  77,
+    24, 35, 55, 64,  81, 104, 113,  92,
+    49, 64, 78, 87, 103, 121, 120, 101,
+    72, 92, 95, 98, 112, 100, 103,  99
+};
+
+/* Standard JPEG chrominance quantization table (Q=50 baseline) */
+static const unsigned char std_chr_quant[64] = {
+    17, 18, 24, 47, 99, 99, 99, 99,
+    18, 21, 26, 66, 99, 99, 99, 99,
+    24, 26, 56, 99, 99, 99, 99, 99,
+    47, 66, 99, 99, 99, 99, 99, 99,
+    99, 99, 99, 99, 99, 99, 99, 99,
+    99, 99, 99, 99, 99, 99, 99, 99,
+    99, 99, 99, 99, 99, 99, 99, 99,
+    99, 99, 99, 99, 99, 99, 99, 99
+};
+
+/**
+ * Send a JPEG frame over RTP using RFC 2435 payload format
+ * @param jpeg_data JPEG frame data
+ * @param jpeg_size Size of the JPEG frame
+ * @param timestamp RTP timestamp
+ * @param width Frame width in pixels
+ * @param height Frame height in pixels
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int udp_stream_send_jpeg(const unsigned char *jpeg_data, int jpeg_size,
+                         unsigned int timestamp, unsigned short width, unsigned short height)
+{
+    if (!g_udp_ctx || !jpeg_data || jpeg_size <= 0)
+        return EXIT_FAILURE;
+
+    int total_clients = 0;
+    pthread_mutex_lock(&g_udp_ctx->mutex);
+    total_clients = g_udp_ctx->client_count;
+    pthread_mutex_unlock(&g_udp_ctx->mutex);
+
+    if (total_clients == 0 && !g_udp_ctx->is_mcast)
+        return EXIT_SUCCESS;
+
+    unsigned int fragment_offset = 0;
+    /* First packet has extra 68 bytes for quantization table header */
+    unsigned int payload_space_first = MAX_UDP_PACKET_SIZE - RTP_HEADER_SIZE - 8 - 68;
+    unsigned int payload_space = MAX_UDP_PACKET_SIZE - RTP_HEADER_SIZE - 8;
+
+    while (fragment_offset < (unsigned int)jpeg_size)
+    {
+        unsigned int space = (fragment_offset == 0) ? payload_space_first : payload_space;
+        unsigned int remaining = jpeg_size - fragment_offset;
+        unsigned int is_last = (remaining <= space);
+        unsigned int frag_size = is_last ? remaining : space;
+
+        pthread_mutex_lock(&g_udp_ctx->mutex);
+
+        if (g_udp_ctx->is_mcast)
+        {
+            struct sockaddr_in mcast_addr;
+            memset(&mcast_addr, 0, sizeof(mcast_addr));
+            mcast_addr.sin_family = AF_INET;
+            mcast_addr.sin_addr.s_addr = g_udp_ctx->mcast_addr;
+            mcast_addr.sin_port = htons(g_udp_ctx->port);
+
+            unsigned char packet[MAX_UDP_PACKET_SIZE];
+            int rtp_size = add_rtp_header(packet, 0, 0, timestamp, 0, is_last, 26);
+
+            /* JPEG Main Header (8 bytes) */
+            packet[rtp_size++] = 0x00;  /* Type Specific */
+            packet[rtp_size++] = (fragment_offset >> 16) & 0xFF;
+            packet[rtp_size++] = (fragment_offset >> 8) & 0xFF;
+            packet[rtp_size++] = fragment_offset & 0xFF;
+            packet[rtp_size++] = 0xFF;  /* Q = 0xFF: custom quantization tables follow */
+            packet[rtp_size++] = (width + 7) / 8;   /* Width in 8-pixel units */
+            packet[rtp_size++] = (height + 7) / 8;  /* Height in 8-pixel units */
+
+            if (fragment_offset == 0)
+            {
+                /* Quantization Table Header (68 bytes) */
+                packet[rtp_size++] = 0x00;  /* MBZ */
+                packet[rtp_size++] = 0x00;  /* Precision (8-bit) */
+                packet[rtp_size++] = 0x00;  /* Length high */
+                packet[rtp_size++] = 0x80;  /* Length low (128 = 64+64) */
+                memcpy(packet + rtp_size, std_lum_quant, 64);
+                rtp_size += 64;
+                memcpy(packet + rtp_size, std_chr_quant, 64);
+                rtp_size += 64;
+            }
+
+            memcpy(packet + rtp_size, jpeg_data + fragment_offset, frag_size);
+            rtp_size += frag_size;
+
+            sendto(g_udp_ctx->socket_fd, packet, rtp_size, 0,
+                   (struct sockaddr *)&mcast_addr, sizeof(mcast_addr));
+        }
+        else
+        {
+            for (int i = 0; i < UDP_MAX_CLIENTS; i++)
+            {
+                if (!g_udp_ctx->clients[i].active)
+                    continue;
+
+                unsigned char packet[MAX_UDP_PACKET_SIZE];
+                unsigned short seq = g_udp_ctx->clients[i].seq++;
+                int rtp_size = add_rtp_header(packet, 0, seq, timestamp,
+                                               g_udp_ctx->clients[i].ssrc, is_last, 26);
+
+                /* JPEG Main Header (8 bytes) */
+                packet[rtp_size++] = 0x00;  /* Type Specific */
+                packet[rtp_size++] = (fragment_offset >> 16) & 0xFF;
+                packet[rtp_size++] = (fragment_offset >> 8) & 0xFF;
+                packet[rtp_size++] = fragment_offset & 0xFF;
+                packet[rtp_size++] = 0xFF;  /* Q = 0xFF: custom quantization tables */
+                packet[rtp_size++] = (width + 7) / 8;
+                packet[rtp_size++] = (height + 7) / 8;
+
+                if (fragment_offset == 0)
+                {
+                    /* Quantization Table Header (68 bytes) */
+                    packet[rtp_size++] = 0x00;
+                    packet[rtp_size++] = 0x00;
+                    packet[rtp_size++] = 0x00;
+                    packet[rtp_size++] = 0x80;
+                    memcpy(packet + rtp_size, std_lum_quant, 64);
+                    rtp_size += 64;
+                    memcpy(packet + rtp_size, std_chr_quant, 64);
+                    rtp_size += 64;
+                }
+
+                memcpy(packet + rtp_size, jpeg_data + fragment_offset, frag_size);
+                rtp_size += frag_size;
+
+                sendto(g_udp_ctx->socket_fd, packet, rtp_size, 0,
+                       (struct sockaddr *)&g_udp_ctx->clients[i].addr,
+                       sizeof(struct sockaddr_in));
+            }
+        }
+
+        pthread_mutex_unlock(&g_udp_ctx->mutex);
+        fragment_offset += frag_size;
+    }
+
+    return EXIT_SUCCESS;
+}

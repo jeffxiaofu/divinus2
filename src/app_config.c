@@ -144,6 +144,14 @@ int save_app_config(void) {
     fprintf(file, "  center_delta_qp: %d\n", app_config.roi_center_delta_qp);
     fprintf(file, "  surround_delta_qp: %d\n", app_config.roi_surround_delta_qp);
 
+    fprintf(file, "uvc:\n");
+    fprintf(file, "  enable: %s\n", app_config.uvc_enable ? "true" : "false");
+    fprintf(file, "  device: %s\n", app_config.uvc_device);
+    fprintf(file, "  width: %d\n", app_config.uvc_width);
+    fprintf(file, "  height: %d\n", app_config.uvc_height);
+    fprintf(file, "  fps: %d\n", app_config.uvc_fps);
+    fprintf(file, "  format: %s\n", app_config.uvc_format);
+
     fprintf(file, "http_post:\n");
     fprintf(file, "  enable: %s\n", app_config.http_post_enable ? "true" : "false");
     fprintf(file, "  host: %s\n", app_config.http_post_host);
@@ -220,6 +228,13 @@ enum ConfigError parse_app_config(void) {
     app_config.roi_height_pct = 50;
     app_config.roi_center_delta_qp = -4;
     app_config.roi_surround_delta_qp = 4;
+
+    app_config.uvc_enable = false;
+    strncpy(app_config.uvc_device, "/dev/video0", sizeof(app_config.uvc_device) - 1);
+    app_config.uvc_width = 640;
+    app_config.uvc_height = 480;
+    app_config.uvc_fps = 30;
+    strncpy(app_config.uvc_format, "auto", sizeof(app_config.uvc_format) - 1);
 
     app_config.mp4_minQual = 12;
     app_config.mp4_maxQual = 48;
@@ -539,6 +554,15 @@ enum ConfigError parse_app_config(void) {
     parse_int(&ini, "roi", "height_pct", 1, 100, (int *)&app_config.roi_height_pct);
     parse_int(&ini, "roi", "center_delta_qp", -12, 12, &app_config.roi_center_delta_qp);
     parse_int(&ini, "roi", "surround_delta_qp", -12, 12, &app_config.roi_surround_delta_qp);
+
+    parse_bool(&ini, "uvc", "enable", &app_config.uvc_enable);
+    if (app_config.uvc_enable) {
+        parse_param_value(&ini, "uvc", "device", app_config.uvc_device);
+        parse_int(&ini, "uvc", "width", 160, INT_MAX, (int *)&app_config.uvc_width);
+        parse_int(&ini, "uvc", "height", 120, INT_MAX, (int *)&app_config.uvc_height);
+        parse_int(&ini, "uvc", "fps", 1, 120, (int *)&app_config.uvc_fps);
+        parse_param_value(&ini, "uvc", "format", app_config.uvc_format);
+    }
 
     free(ini.str);
     return CONFIG_OK;

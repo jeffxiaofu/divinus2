@@ -17,6 +17,7 @@
 #include "rtsp/rtsp_server.h"
 #include "server.h"
 #include "stream.h"
+#include "uvc.h"
 
 extern char audioOn, udpOn;
 extern rtsp_handle rtspHandle;

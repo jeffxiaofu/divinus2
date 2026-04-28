@@ -6,6 +6,7 @@
 #include "night.h"
 #include "rtsp/rtsp_server.h"
 #include "server.h"
+#include "uvc.h"
 #include "watchdog.h"
 
 #include <getopt.h>
@@ -84,6 +85,25 @@ int main(int argc, char *argv[]) {
     if (start_sdk())
         HAL_ERROR("hal", "Failed to start SDK!\n");
 
+    if (app_config.uvc_enable) {
+        uvc_config uvc_conf;
+        strncpy(uvc_conf.device, app_config.uvc_device, sizeof(uvc_conf.device) - 1);
+        uvc_conf.width = app_config.uvc_width;
+        uvc_conf.height = app_config.uvc_height;
+        uvc_conf.fps = app_config.uvc_fps;
+        if (!strcmp(app_config.uvc_format, "mjpeg"))
+            uvc_conf.format = UVC_FORMAT_MJPEG;
+        else if (!strcmp(app_config.uvc_format, "h264"))
+            uvc_conf.format = UVC_FORMAT_H264;
+        else
+            uvc_conf.format = UVC_FORMAT_AUTO;
+
+        if (!uvc_capture_init(&uvc_conf))
+            uvc_capture_start();
+        else
+            HAL_DANGER("main", "UVC initialization failed!\n");
+    }
+
     if (app_config.night_mode_enable)
         enable_night();
 
@@ -110,6 +130,9 @@ int main(int argc, char *argv[]) {
         disable_night();
 
     stop_sdk();
+
+    if (app_config.uvc_enable)
+        uvc_capture_deinit();
 
     if (app_config.stream_enable)
         stop_streaming();

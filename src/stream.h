@@ -47,3 +47,4 @@ void udp_stream_close(void);
 int udp_stream_add_client(const char *host, unsigned short port);
 void udp_stream_remove_client(int client_id);
 int udp_stream_send_nal(const char *nal_data_ext, int nal_size_ext, unsigned int timestamp, int is_keyframe, int is_h265);
+int udp_stream_send_jpeg(const unsigned char *jpeg_data, int jpeg_size, unsigned int timestamp, unsigned short width, unsigned short height);
