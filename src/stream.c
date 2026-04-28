@@ -608,8 +608,8 @@ int udp_stream_send_jpeg(const unsigned char *jpeg_data, int jpeg_size,
         return EXIT_SUCCESS;
 
     unsigned int fragment_offset = 0;
-    /* First packet has extra 68 bytes for quantization table header */
-    unsigned int payload_space_first = MAX_UDP_PACKET_SIZE - RTP_HEADER_SIZE - 8 - 68;
+    /* First packet has quantization table header: 4 bytes header + 128 bytes tables = 132 */
+    unsigned int payload_space_first = MAX_UDP_PACKET_SIZE - RTP_HEADER_SIZE - 8 - 132;
     unsigned int payload_space = MAX_UDP_PACKET_SIZE - RTP_HEADER_SIZE - 8;
 
     while (fragment_offset < (unsigned int)jpeg_size)
