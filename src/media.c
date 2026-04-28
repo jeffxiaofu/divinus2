@@ -97,14 +97,14 @@ int save_video_stream(char index, hal_vidstream *stream) {
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, isH265);
 
-            if (app_config.stream_enable)
+            if (app_config.stream_enable && !app_config.uvc_enable)
             //HAL_DANGER("media", "stream count:%d\n",stream->count);
                 for (int i = 0; i < stream->count; i++){
                     //HAL_DANGER("media", "naluCnt:%d\n",stream->pack[i].naluCnt);
                     for (int j = 0; j < stream->pack[i].naluCnt; j++)
                     {
                         //HAL_DANGER("media", "stream:%d,nalu:%d\n",i,j);
-                        udp_stream_send_nal(stream->pack[i].data + stream->pack[i].nalu[j].offset, 
+                        udp_stream_send_nal(stream->pack[i].data + stream->pack[i].nalu[j].offset,
                             stream->pack[i].nalu[j].length, stream->pack[i].timestamp,
                             stream->pack[i].nalu[j].type == NalUnitType_CodedSliceIdr, isH265);
                     }
